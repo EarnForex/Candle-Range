@@ -28,30 +28,37 @@ input string ObjectPrefix = "CR-";
 int n_digits = 0;
 double divider = 1;
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OnInit()
-{
-    ObjectCreate(ObjectPrefix + "Range", OBJ_LABEL, 0, 0, 0);
-    ObjectSetText(ObjectPrefix + "Range", "");
-    ObjectSet(ObjectPrefix + "Range", OBJPROP_CORNER, corner);
-    ObjectSet(ObjectPrefix + "Range", OBJPROP_XDISTANCE, distance_x);
-    ObjectSet(ObjectPrefix + "Range", OBJPROP_YDISTANCE, distance_y);
-    ObjectSet(ObjectPrefix + "Range", OBJPROP_BACK, DrawTextAsBackground);
+  {
+   ObjectCreate(ObjectPrefix + "Range", OBJ_LABEL, 0, 0, 0);
+   ObjectSetText(ObjectPrefix + "Range", "");
+   ObjectSet(ObjectPrefix + "Range", OBJPROP_CORNER, corner);
+   ObjectSet(ObjectPrefix + "Range", OBJPROP_XDISTANCE, distance_x);
+   ObjectSet(ObjectPrefix + "Range", OBJPROP_YDISTANCE, distance_y);
+   ObjectSet(ObjectPrefix + "Range", OBJPROP_BACK, DrawTextAsBackground);
+   if(HavePipettes)
+     {
+      divider = 10;
+      n_digits = 1;
+     }
+// Enable mouse move events for the chart.
+   ChartSetInteger(ChartID(), CHART_EVENT_MOUSE_MOVE, true);
+  }
 
-    if (HavePipettes)
-    {
-        divider = 10;
-        n_digits = 1;
-    }
-    
-    // Enable mouse move events for the chart.
-    ChartSetInteger(ChartID(), CHART_EVENT_MOUSE_MOVE, true);
-}
-
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OnDeinit(const int reason)
-{
-    ObjectDelete(ObjectPrefix + "Range");
-}
+  {
+   ObjectDelete(ObjectPrefix + "Range");
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 int OnCalculate(const int rates_total,
                 const int prev_calculated,
                 const datetime& time[],
@@ -62,44 +69,63 @@ int OnCalculate(const int rates_total,
                 const long& tick_volume[],
                 const long& volume[],
                 const int& spread[]
-)
-{
-    return rates_total;
-}
+               )
+  {
+   return rates_total;
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OutputRange(double range, double body)
-{
-    string text = "Range: " + DoubleToString(Normalize(range), n_digits);
-    if (ShowBodySize) text += " Body: " + DoubleToString(Normalize(body), n_digits);
-    ObjectSetText(ObjectPrefix + "Range", text, font_size, font_face, font_color);
-}
+  {
+   string text = "Range: " + DoubleToString(Normalize(range), n_digits);
+   if(ShowBodySize)
+      text += " Body: " + DoubleToString(Normalize(body), n_digits);
+   ObjectSetText(ObjectPrefix + "Range", text, font_size, font_face, font_color);
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 double Normalize(double distance)
-{
-    return NormalizeDouble(distance / _Point / divider, n_digits);
-}
+  {
+   return NormalizeDouble(distance / _Point / divider, n_digits);
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OnChartEvent(const int id,
                   const long &lparam,
                   const double &dparam,
                   const string &sparam)
-{
-    if (id == CHARTEVENT_MOUSE_MOVE)
-    {
-        int subwindow;
-        datetime time;
-        double price;
-        ChartXYToTimePrice(ChartID(), (int)lparam, (int)dparam, subwindow, time, price);
-        int i = iBarShift(Symbol(), Period(), time, true);
-        if (i < 0) return;
-        static double prev_range = 0;
-        static double prev_body = 0;
-        double range = High[i] - Low[i];
-        double body = MathAbs(Open[i] - Close[i]);
-        if ((range == prev_range) && (body == prev_body)) return; // Optimization to avoid updating the range object when nothing changed.
-        prev_range = range;
-        prev_body = body;
-        OutputRange(range, body);
-    }
-}
+  {
+   if(id == CHARTEVENT_MOUSE_MOVE)
+     {
+      int subwindow;
+      datetime time;
+      double price, H, L, O, C, CC;
+      ChartXYToTimePrice(ChartID(), (int)lparam, (int)dparam, subwindow, time, price);
+      int i = iBarShift(Symbol(), Period(), time, true);
+      if(i < 0)
+         return;
+      static double prev_range = 0;
+      static double prev_body = 0;
+      H = High[i];
+      L = Low[i];
+      O = Open[i];
+      C = Close[i];
+      CC = Close[i + 1];
+      double range0 = MathMax(MathAbs(CC - H), MathAbs(CC - L));
+      double range = MathMax(H - L, range0);
+      double body = MathAbs(O - C);
+      if((range == prev_range) && (body == prev_body))
+         return; // Optimization to avoid updating the range object when nothing changed.
+      prev_range = range;
+      prev_body = body;
+      OutputRange(range, body);
+     }
+  }
+
 //+------------------------------------------------------------------+
