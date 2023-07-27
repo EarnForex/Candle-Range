@@ -1,11 +1,11 @@
 //+------------------------------------------------------------------+
 //|                                                     Candle Range |
-//|                                  Copyright © 2022, EarnForex.com |
+//|                                  Copyright © 2023, EarnForex.com |
 //|                                       https://www.earnforex.com/ |
 //+------------------------------------------------------------------+
-#property copyright "Copyright © 2022, www.EarnForex.com"
+#property copyright "Copyright © 2023, www.EarnForex.com"
 #property link      "https://www.earnforex.com/metatrader-indicators/Candle-Range/"
-#property version   "1.00"
+#property version   "1.01"
 #property strict
 
 #property description "Candle Range - displays candle's pip range on mouseover."
@@ -16,6 +16,7 @@
 
 input bool ShowBodySize = false; // ShowBodySize: if true, body size will be shown too.
 input bool HavePipettes = false; // HavePipettes: if true, ranges will be divided by 10.
+input bool TrueRange = false;    // TrueRange: if true, use true range formula.
 input color font_color = clrLightGray;
 input int font_size = 10;
 input string font_face = "Verdana";
@@ -95,6 +96,15 @@ void OnChartEvent(const int id,
         static double prev_range = 0;
         static double prev_body = 0;
         double range = High[i] - Low[i];
+        if (TrueRange)
+        {
+            double range0 = 0;
+            if (i < Bars - 1) // Otherwise cannot calculate range0.
+            {
+                range0 = MathMax(MathAbs(Close[i + 1] - High[i]), MathAbs(Close[i + 1] - Low[i]));
+            }
+            range = MathMax(range, range0);
+        }
         double body = MathAbs(Open[i] - Close[i]);
         if ((range == prev_range) && (body == prev_body)) return; // Optimization to avoid updating the range object when nothing changed.
         prev_range = range;
